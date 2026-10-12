@@ -1,0 +1,150 @@
+openapi: 3.0.3
+info:
+  title: АИС Кафедральный кампус — API Учебного процесса
+  version: 1.0.0
+  description: >
+    API шлюза интеграции для управления учебным процессом и расписанием кафедры. 
+    Обеспечивает взаимодействие между UI Layer (клиентским интерфейсом) 
+    и Service/API Layer (базой данных и серверной логикой).
+servers:
+  - url: https://department-campus.university
+    description: Тестовый сервер для интеграционного тестирования (Staging)
+
+paths:
+  /schedule:
+    get:
+      summary: Получение расписания учебной группы
+      description: >
+        Используется на уровне UI Layer для отрисовки интерфейса расписания. 
+        Запрос направляется через API Layer для чтения данных из БД кампуса.
+      parameters:
+        - name: groupCode
+          in: query
+          required: true
+          description: Уникальный код академической группы
+          schema:
+            type: string
+            example: "И13-24-11"
+      responses:
+        '200':
+          description: Успешное получение массива занятий для указанной группы
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Lesson'
+        '400':
+          description: Неверный формат кода группы (ошибка валидации на клиенте/сервере)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Внутренняя ошибка сервера (ошибка интеграции с базой данных)
+
+  /schedule/lesson:
+    post:
+      summary: Добавление нового занятия в расписание кафедры
+      description: >
+        Позволяет интерфейсу администратора (UI Layer) отправлять данные формы 
+        через Сетевой слой для создания новой записи. Объект проходит валидацию 
+        и покрывается интеграционными тестами взаимодействия с БД.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LessonCreateInput'
+      responses:
+        '201':
+          description: Занятие успешно создано и добавлено в расписание
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  createdLessonId:
+                    type: integer
+                    example: 1024
+                  message:
+                    type: string
+                    example: "Занятие успешно добавлено в расписание группы И13-24-11"
+        '400':
+          description: Ошибка валидации входящих данных (например, наложение пар в аудитории)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Конфликт расписания (аудитория или преподаватель уже заняты в это время)
+
+components:
+  schemas:
+    Lesson:
+      type: object
+      required:
+        - id
+        - timeSlot
+        - subject
+        - room
+        - lecturer
+      properties:
+        id:
+          type: integer
+          description: Уникальный идентификатор записи в базе данных
+          example: 1024
+        timeSlot:
+          type: string
+          description: Время проведения пары и её порядковый номер
+          example: "09:00 - 10:30 (1 пара)"
+        subject:
+          type: string
+          description: Название учебной дисциплины кафедры
+          example: "Архитектура информационных систем"
+        room:
+          type: string
+          description: Номер учебной аудитории или лаборатории кафедры
+          example: "Ауд. 312 (Лаборатория СУБД)"
+        lecturer:
+          type: string
+          description: ФИО преподавателя, ведущего занятие
+          example: "Иванов И.И."
+
+    LessonCreateInput:
+      type: object
+      required:
+        - groupCode
+        - timeSlot
+        - subject
+        - room
+        - lecturer
+      properties:
+        groupCode:
+          type: string
+          example: "И13-24-11"
+        timeSlot:
+          type: string
+          example: "09:00 - 10:30 (1 пара)"
+        subject:
+          type: string
+          example: "Архитектура информационных систем"
+        room:
+          type: string
+          example: "Ауд. 312 (Лаборатория СУБД)"
+        lecturer:
+          type: string
+          example: "Иванов И.И."
+
+    ErrorResponse:
+      type: object
+      properties:
+        errorCode:
+          type: string
+          example: "BAD_REQUEST_PARAMS"
+        errorMessage:
+          type: string
+          example: "Параметр groupCode не соответствует валидному шаблону кафедры."
