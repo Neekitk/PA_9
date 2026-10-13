@@ -1,0 +1,17 @@
+## Результаты компиляции, сборки и кэш .NET
+bin/
+obj/
+
+## Локальные папки конфигурации и кэша Visual Studio
+.vs/
+*.user
+*.userosscache
+*.sln.docstates
+
+## Локальные файлы конфигурации, содержащие секреты разработчиков
+appsettings.Development.json
+secrets.json
+
+## Временные файлы операционных систем
+Thumbs.db
+.DS_Store
